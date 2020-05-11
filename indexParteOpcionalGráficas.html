@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+	<meta charset="utf-8" />
+	<title>Reproductor DASH</title>
+	<style>
+		video{
+			margin-left: 5%;
+			width:640px;
+			height:360px;}
+	</style>
+
+	<!-- <script src="dash.webm.min.js"></script> -->
+	<script src="http://cdn.dashjs.org/latest/dash.all.min.js"></script>
+	<script type="text/javascript" src="https://unpkg.com/vis-timeline@7.3.4/dist/vis-timeline-graph2d.min.js"></script>
+	<link rel="stylesheet" type="text/css" href="https://unpkg.com/vis-timeline@7.3.4/dist/vis-timeline-graph2d.min.css" />
+	<!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/dashjs/2.6.7/dash.all.min.js"></script> -->
+
+</head>
+<!--<script>
+	function startVideo(mpd) {
+		var video, context, player;
+		video = document.querySelector('video');
+		context = new Webm.di.WebmContext();
+		player = new MediaPlayer(context);
+		player.startup();
+		player.attachView(video);
+		player.setAutoPlay(false);
+		player.attachSource(mpd);
+		}
+</script>-->
+
+
+<body>
+
+	<h2 style="text-align:center;">Práctica 3: Integración de redes, aplicaciones y contenidos. (Equipo 01) </h2>
+
+	<div style="background-color: #fff" 
+	>
+		<video class="dashjs-player" autoplay controls preload="auto" muted style="
+			border: PowderBlue 5px solid;
+			border-radius: 20px;
+			display: inline-block;
+			margin-right: 50px;"
+		>
+			<source src="./output/stream.mpd" type="application/dash+xml"/>
+		</video>
+	
+		<div class="code", style="
+			display: inline-block;
+			vertical-align:top;
+			position: top;
+			padding: 3px 15px;
+			border: PowderBlue 5px solid;
+			border-radius: 20px;"
+		>
+			<p><img src="blue.png" width="15px"><b> Video Bitrate:</b> <span id="bitrate"></span> </p>
+			<p><img src="orange.png" width="15px"><b> Video Buffer:</b> <span id="buffer"></span> </p>
+			<p><b>Video Representation:</b> <span id="representation"></span></p>
+		</div>
+	</div>
+
+	<div>
+		<div id="timeline_view"></div>
+	</div>
+
+	<div>
+		<canvas id="myChart" width="400" height="50px"></canvas>
+	</div>
+
+
+	
+	
+</body>
+<script>
+	document.addEventListener("DOMContentLoaded", function () {
+		init();
+	});
+	function init(){
+		var n = 0
+		var video, player, mpd_url;
+		var DELAY = 1000; // delay in ms to add new data points
+		var container = document.getElementById('timeline_view');
+	    var dataset = new vis.DataSet();
+	    
+	    var options = {
+		    start: vis.moment().add(-20, 'seconds'), // changed so its faster
+		    end: vis.moment(),
+		    interpolation: false,
+		    height: '300px',
+		    dataAxis: {
+		      left: {
+		        title: {text: 'Bitrate (10^5 bps) / Buffer level (secs)'}
+		      }
+		    },
+	        drawPoints: {
+	            size: 3,
+	            style: 'circle'
+	        }
+		 };
+
+	    graph2d = new vis.Graph2d(container, dataset, options);
+	    graph2d.setOptions(options)
+
+	    function renderStep() {
+		    // move the window (you can think of different strategies).
+		    var now = vis.moment();
+		    var range = graph2d.getWindow();
+		    var interval = range.end - range.start;
+		    
+		    graph2d.setWindow(now - interval, now, {animation: false});
+		    requestAnimationFrame(renderStep);
+		 }
+		renderStep();
+		function addDataPoint(buffer, bit) {
+				    // add a new data point to the dataset
+			var dato_buf = buffer
+			var dato_bit = bit
+			// if(dato_buf =! undefined && dato_buf != true){
+			// 	console.log(dato_buf)
+			// }
+			var diferencia = bit-buffer
+			var now = vis.moment();
+			dataset.add({
+			    x: now,
+			    y: bit,
+			    group: 0
+			});
+			dataset.add({
+				x: now,
+				y: buffer,
+				group: 1
+			});
+
+				// remove all data points which are no longer visible
+			var range = graph2d.getWindow();
+			var interval = range.end - range.start;
+			var oldIds = dataset.getIds({
+				filter: function (item) {
+				    return item.x < range.start - interval;
+				}
+			});
+			dataset.remove(oldIds);
+			// setTimeout(addDataPoint, DELAY); esto provocaba undefinedsssss
+		}
+
+		mpd_url = "./output/stream.mpd";
+		video = document.querySelector("video");
+		player = dashjs.MediaPlayer().create();
+		player = dashjs.MediaPlayerFactory.create(document.querySelector(".dashjs-player"));
+		player.initialize(video, mpd_url, true);
+		player.on(dashjs.MediaPlayer.events["PLAYBACK_ENDED"], function() {
+			clearInterval(eventPoller);
+		});
+
+		var eventPoller = setInterval(function() {
+			var streamInfo = player.getActiveStream().getStreamInfo();
+			var dashMetrics = player.getDashMetrics();
+			var dashAdapter = player.getDashAdapter();
+			if (dashMetrics && streamInfo) {
+				const periodIdx = streamInfo.index;
+				var repSwitch = dashMetrics.getCurrentRepresentationSwitch('video', true);
+				var bufferLevel = dashMetrics.getCurrentBufferLevel('video', true);
+				var bitrate = repSwitch ? Math.round(dashAdapter.
+					getBandwidthForRepresentation(repSwitch.to,
+						periodIdx) / 1000) : NaN;
+				document.getElementById('buffer').innerText = bufferLevel + " secs";
+				document.getElementById('bitrate').innerText = bitrate + " kbps";
+				document.getElementById('representation').innerText = repSwitch.to;
+				
+				  /**
+				   * Add a new datapoint to the graph
+				   */ 
+				// console.log(bufferLevel+'  '+bitrate)
+				addDataPoint(bufferLevel, bitrate/100);
+				
+		 	}
+		
+	}, 500);
+	}
+
+</script>
+
+</html>

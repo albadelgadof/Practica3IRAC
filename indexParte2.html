@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+	<meta charset="utf-8" />
+	<title>Reproductor DASH</title>
+	<style>
+		video{
+			width:640px;
+			height:360px;}
+	</style>
+
+	<!-- <script src="dash.webm.min.js"></script> -->
+	<script src="http://cdn.dashjs.org/latest/dash.all.min.js"></script>
+	<!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/dashjs/2.6.7/dash.all.min.js"></script> -->
+
+</head>
+<!--<script>
+	function startVideo(mpd) {
+		var video, context, player;
+		video = document.querySelector('video');
+		context = new Webm.di.WebmContext();
+		player = new MediaPlayer(context);
+		player.startup();
+		player.attachView(video);
+		player.setAutoPlay(false);
+		player.attachSource(mpd);
+		}
+</script>-->
+<script>
+	
+	document.addEventListener("DOMContentLoaded", function () {
+		init();
+	});
+	function init(){
+		var video, player, mpd_url = "./output/stream.mpd";
+		video = document.querySelector("video");
+		player = dashjs.MediaPlayer().create();
+		player = dashjs.MediaPlayerFactory.create(document.querySelector(".dashjs-player"));
+		player.initialize(video, mpd_url, true);
+		player.on(dashjs.MediaPlayer.events["PLAYBACK_ENDED"], function() {
+			clearInterval(eventPoller);
+		});
+		var eventPoller = setInterval(function() {
+			var streamInfo = player.getActiveStream().getStreamInfo();
+			var dashMetrics = player.getDashMetrics();
+			var dashAdapter = player.getDashAdapter();
+			if (dashMetrics && streamInfo) {
+				const periodIdx = streamInfo.index;
+				var repSwitch = dashMetrics.getCurrentRepresentationSwitch('video', true);
+				var bufferLevel = dashMetrics.getCurrentBufferLevel('video', true);
+				var bitrate = repSwitch ? Math.round(dashAdapter.
+					getBandwidthForRepresentation(repSwitch.to,
+						periodIdx) / 1000) : NaN;
+				document.getElementById('buffer').innerText = bufferLevel + " secs";
+				document.getElementById('bitrate').innerText = bitrate + " Kbps";
+				document.getElementById('representation').innerText = repSwitch.to;
+ 			}
+		}, 500);
+
+	}
+</script>
+<!--onload="startVideo('stream.mpd')"-->
+<body>
+	<div class="code">
+		<video class="dashjs-player" autoplay controls preload="auto" muted>
+			<source src="./output/stream.mpd" type="application/dash+xml">
+		</video>
+	</div>
+	
+	<div class="code", style="position:absolute; top:130px; right:200px;
+		padding: 3px 10px;
+		 border: PowderBlue 5px solid;
+		 border-radius: 20px;">
+		<p>Video Bitrate: <span id="bitrate"></span> </p>
+		<p>Video Buffer: <span id="buffer"></span> </p>
+		<p>Video Representation: <span id="representation"></span></p>
+	</div>
+	<div class="descripcion", style="position:absolute; top:20px;right:125px;padding: 3px 10px;
+		 border: PowderBlue 5px solid;
+		 border-radius: 20px;">
+		<p>Práctica 3: Integración de redes, aplicaciones y contenidos</br> Equipo 01 </p>
+		
+
+	</div>
+
+	
+
+	
+	
+</body>
+</html>
